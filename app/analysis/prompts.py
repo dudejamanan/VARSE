@@ -28,43 +28,45 @@ Transcript:
 
 
 
-
 comparision_prompt = PromptTemplate(
     template="""
 You are an expert learning advisor.
 
-You MUST make a clear decision.
+You are given analysis of multiple videos.
 
-Video 1 Analysis:
-{analysis1}
+{all_videos}
 
-Video 2 Analysis:
-{analysis2}
-
-Compare the two videos strictly based on:
-- number of topics covered
-- depth
-- clarity
-- structure
+Your task:
+- Compare ALL videos
+- Rank them based on:
+  - number of topics covered
+  - depth
+  - clarity
+  - structure
 
 Rules:
-- Be consistent (no contradictions)
+- Be consistent
 - Do NOT be vague
-- Choose ONLY ONE best video
+- Give a clear ranking
 
 Return in this format:
 
-Comparison:
-- Topics coverage: ...
-- Depth: ...
-- Clarity: ...
-- Structure: ...
+Ranking:
+1. Video X (ID: ...)
+2. Video Y (ID: ...)
+3. Video Z (ID: ...)
 
-Winner:
-<Video 1 or Video 2>
+Best for beginners:
+...
+
+Best for depth:
+...
+
+Best for clarity:
+...
 
 Reason:
-<clear justification>
+<clear explanation>
 """,
-input_variables=["analysis1","analysis2"]
+    input_variables=["all_videos"]
 )
