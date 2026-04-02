@@ -5,6 +5,9 @@ from ingestion.chunking import split_text,sample_chunks_evenly
 from analysis.analyzer import analyze_chunks
 from comparison.comparator import compare_videos
 
+from vector_store.faiss_store import build_vectorstore
+from rag.retriever import get_retriever
+from rag.qa_chain import answer_query
 
 # def run():
 #     url1 = "https://www.youtube.com/watch?v=K5KVEU3aaeQ"
@@ -43,31 +46,48 @@ from comparison.comparator import compare_videos
 
 
 def run():
-    urls = ["https://www.youtube.com/watch?v=_uQrJ0TkZlc","https://www.youtube.com/watch?v=ygXn5nV5qFc","https://www.youtube.com/watch?v=ix9cRaBkVe0&t=42166s"]
+    urls = ["https://www.youtube.com/watch?v=VXU4LSAQDSc&pp=ygUFbnVtcHk%3D","https://www.youtube.com/watch?v=QUT1VHiLmmI&pp=ygUFbnVtcHk%3D","https://www.youtube.com/watch?v=8h46xOkWVtI&pp=ygUFbnVtcHk%3D"]
     videos = []
+    all_chunks = []
     for url in urls:
         video_id = extract_video_id(url)
         print(f"Processing Video:{video_id}")
 
         transcript = fetch_transcript(video_id)
-        chunks = split_text(transcript)
+        chunks = split_text(transcript,video_id)
+        all_chunks.extend(chunks)
         analysis = analyze_chunks(chunks)
+       
 
         videos.append({
             "video_id": video_id,
             "analysis": analysis
         })
     
+    build_vectorstore(all_chunks)
+    print("Vectorstore built!")
+
     print("\n--- ALL ANALYSES DONE ---\n")
 
-    # Compare all videos
+    retriever = get_retriever(k=10)
+
+    query = "how are numpy arrays better than python list"
+    docs = retriever.invoke(query)
+
+    answer = answer_query(docs, query)
+    
+
+    #Compare all videos
     result = compare_videos(videos)
 
     print("\n=== FINAL RANKING ===\n")
     print(result)
 
+
     
 
+    print("\n=== FINAL ANSWER ===\n")
+    print(answer)
     
 
 

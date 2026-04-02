@@ -1,14 +1,18 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import numpy as np
 
-def split_text(transcript):
-    
-    splitter = RecursiveCharacterTextSplitter(
-    chunk_size=700,
-    chunk_overlap=150
-)
+def split_text(transcript, video_id):
 
-    chunks = splitter.create_documents([transcript])
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=700,
+        chunk_overlap=150
+    )
+
+    chunks = splitter.create_documents(
+        [transcript],
+        metadatas=[{"video_id": video_id}]
+    )
+
     return chunks
 
 def sample_chunks_evenly(chunks, num_samples=15):
