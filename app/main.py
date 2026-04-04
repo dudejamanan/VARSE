@@ -9,44 +9,9 @@ from vector_store.faiss_store import build_vectorstore
 from rag.retriever import get_retriever
 from rag.qa_chain import answer_query
 
-# def run():
-#     url1 = "https://www.youtube.com/watch?v=K5KVEU3aaeQ"
-#     url2 = "https://www.youtube.com/watch?v=_uQrJ0TkZlc"
-
-#     # Step 1: Extract IDs
-#     video_id1 = extract_video_id(url1)
-#     video_id2 = extract_video_id(url2)
-
-#     print("Video IDs:", video_id1, video_id2)
-
-#     # Step 2: Fetch transcripts
-#     transcript1 = fetch_transcript(video_id1)
-#     transcript2 = fetch_transcript(video_id2)
-
-#     print("Fetched transcripts")
-
-#     # Step 3: Chunking
-#     chunks1 = split_text(transcript1)
-#     chunks2 = split_text(transcript2)
-
-#     print("Chunking done")
-
-#     # Step 4: Analysis
-#     analysis1 = analyze_chunks(chunks1)
-#     analysis2 = analyze_chunks(chunks2)
-
-#     print("\n--- Analysis 1 ---\n", analysis1)
-#     print("\n--- Analysis 2 ---\n", analysis2)
-
-#     # Step 5: Comparison
-#     comparison = compare_videos(analysis1, analysis2)
-
-#     print("\n=== FINAL COMPARISON ===\n")
-#     print(comparison)
-
 
 def run():
-    urls = ["https://www.youtube.com/watch?v=VXU4LSAQDSc&pp=ygUFbnVtcHk%3D","https://www.youtube.com/watch?v=QUT1VHiLmmI&pp=ygUFbnVtcHk%3D","https://www.youtube.com/watch?v=8h46xOkWVtI&pp=ygUFbnVtcHk%3D"]
+    urls = ["https://www.youtube.com/watch?v=LDB4uaJ87e0&t=57s","https://www.youtube.com/watch?v=TtPXvEcE11E&pp=ygUUcmVhY3QganMgZnVsbCBjb3Vyc2U%3D","https://www.youtube.com/watch?v=Wt3isV2irrA"]
     videos = []
     all_chunks = []
     for url in urls:
@@ -71,7 +36,17 @@ def run():
 
     retriever = get_retriever(k=10)
 
-    query = "how are numpy arrays better than python list"
+    query = '''Module:6 ReactJS 2 hours
+React Environment Setup - ReactJS Basics - React JSX - React Components: React
+Component API - React Component Life Cycle - React Constructors - React Dev Tools -
+React Native vs ReactJS.
+Module:7 Advanced ReactJS 2 hours
+React Dataflow: React State - React Props - React Props Validation - Styling React - Hooks
+and Routing - Deploying React - Case Studies for building dynamic web applications. 
+
+
+this is my syllabus, suggest me the video which teaches me all of them clearly and also tell what is routing
+'''
     docs = retriever.invoke(query)
 
     answer = answer_query(docs, query)
