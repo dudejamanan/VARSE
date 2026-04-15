@@ -1,6 +1,7 @@
 from ingestion.youtube import extract_video_id
 from ingestion.transcript import fetch_transcript
 from ingestion.chunking import split_text,sample_chunks_evenly
+from ingestion.youtube_metadata import get_video_metadata, convert_duration
 
 from analysis.analyzer import analyze_chunks
 from comparison.comparator import compare_videos
@@ -10,6 +11,7 @@ from rag.retriever import get_retriever
 from rag.qa_chain import answer_query
 
 
+
 def run():
     urls = ["https://www.youtube.com/watch?v=LDB4uaJ87e0&t=57s","https://www.youtube.com/watch?v=TtPXvEcE11E&pp=ygUUcmVhY3QganMgZnVsbCBjb3Vyc2U%3D","https://www.youtube.com/watch?v=Wt3isV2irrA"]
     videos = []
@@ -17,17 +19,30 @@ def run():
     for url in urls:
         video_id = extract_video_id(url)
         print(f"Processing Video:{video_id}")
+        
+        metadata = get_video_metadata(video_id)
+
+        if metadata is None:
+            print(f"Skipping video {video_id} (no metadata)")
+            continue
+
+        views = metadata["views"]
+        likes = metadata["likes"]
+        duration_sec = convert_duration(metadata["duration"])
+
 
         transcript = fetch_transcript(video_id)
         chunks = split_text(transcript,video_id)
         all_chunks.extend(chunks)
         analysis = analyze_chunks(chunks)
-       
 
-        videos.append({
-            "video_id": video_id,
-            "analysis": analysis
-        })
+        analysis["video_id"] = video_id
+        analysis["duration_sec"] = duration_sec
+        analysis["views"] = views
+        analysis["likes"] = likes
+        analysis["engagement_ratio"] = likes / views if views > 0 else 0
+
+        videos.append(analysis)
     
     build_vectorstore(all_chunks)
     print("Vectorstore built!")

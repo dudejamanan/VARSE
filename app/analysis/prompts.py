@@ -9,42 +9,66 @@ Analyze the following transcript and return STRICT JSON.
 IMPORTANT RULES:
 - DO NOT guess anything not present in the transcript
 - DO NOT add external knowledge
-- Be precise and structured
+- Follow ENUM values EXACTLY as specified
+- Ensure all numeric scores are between 1 and 10
+- Output ONLY valid JSON
 
 ----------------------------------------
+IMPORTANT:
+- You MUST use EXACT enum values
+- DO NOT use hyphens (-), spaces, or slashes (/)
+- ONLY use the following values:
+
+content_type: conceptual | mixed | practical
+
+structure: well_structured | moderate | scattered
+
+learning_style: theory | hands_on | visual | code_along
+
+If you output anything else, the response will FAIL.
 
 Return in this format:
 
 {{
   "topics": ["list ALL main topics covered"],
-  
+
   "subtopics": ["list important subtopics if present"],
-  
-  "examples_present": "Yes/No",
-  
-  "depth": "Beginner/Intermediate/Advanced",
-  
-  "conceptual_vs_practical": "Mostly Conceptual / Mixed / Mostly Practical",
-  
-  "clarity": "Low/Medium/High",
-  
+
+  "examples_present": true/false,
+
+  "depth": "beginner/intermediate/advanced",
+  "depth_score": number,
+
+  "content_type": "conceptual/mixed/practical",
+
+  "clarity": "low/medium/high",
+  "clarity_score": number,
   "clarity_reason": "short explanation",
-  
-  "structure": "Well-structured / Moderately structured / Scattered",
-  
-  "flow": "Sequential / Jumping / Mixed",
-  
-  "repetition": "Low/Medium/High",
-  
-  "pace": "Slow / Moderate / Fast",
-  
-  "information_density": "Low/Medium/High",
-  
-  "audience_level": "Beginner / Intermediate / Advanced",
-  
-  "key_strengths": ["list 2-4 strengths observed"],
-  
-  "key_weaknesses": ["list 2-4 weaknesses based ONLY on transcript"]
+
+  "structure": "well_structured/moderate/scattered",
+  "structure_score": number,
+
+  "flow": "sequential/jumping/mixed",
+
+  "repetition": "low/medium/high",
+
+  "pace": "slow/moderate/fast",
+
+  "information_density": "low/medium/high",
+  "information_density_score": number,
+
+  "audience_level": "beginner/intermediate/advanced",
+
+  "learning_style": ["theory/hands_on/visual/code_along"],
+
+  "prerequisites_required": "low/medium/high",
+
+  "engagement_level": "low/medium/high",
+  "engagement_score": number,
+
+  "key_strengths": ["2-4 strengths"],
+
+  "key_weaknesses": ["2-4 weaknesses"]
 }}
 
 ----------------------------------------
@@ -54,8 +78,6 @@ Transcript:
 """,
     input_variables=["text"]
 )
-
-
 
 comparision_prompt = PromptTemplate(
     template="""
