@@ -79,6 +79,8 @@ Transcript:
     input_variables=["text"]
 )
 
+
+
 comparision_prompt = PromptTemplate(
     template="""
 You are an expert learning advisor and content evaluator.
@@ -88,104 +90,157 @@ You are given structured analysis of multiple videos.
 {all_videos}
 
 ----------------------------------------
+YOU ARE A JSON GENERATOR.
 
-Your tasks:
+- DO NOT explain
+- DO NOT write code
+- DO NOT use markdown
+- DO NOT wrap output in ```
+- DO NOT add any text before or after JSON
 
-### 1. Domain Check (VERY IMPORTANT)
-- Determine if all videos belong to the SAME domain/topic.
-- If videos are from completely different domains (e.g., music vs programming, Python vs Node.js):
-  - Clearly state: "Videos are NOT comparable"
-  - Explain why
-  - STOP further comparison
+ONLY output valid JSON.
 
-----------------------------------------
+If you fail, the system will break.
 
-### 2. Topic Analysis
-- List:
-  - Common topics across videos
-  - Unique topics per video
-- Identify missing important topics (ONLY based on comparison, do NOT guess external topics)
-
-----------------------------------------
-
-### 3. Quality Evaluation
-For each video evaluate:
-- Depth (Beginner / Intermediate / Advanced)
-- Clarity (Low / Medium / High)
-- Structure (Well-structured / Scattered)
-- Topic coverage (number + diversity of topics)
+STRICT RULES:
+- Output MUST be valid JSON ONLY
+- DO NOT add any text outside JSON
+- ALL scores must be integers (1-10)
+- video_id must match input exactly
+- use lowercase for all enums
+- DO NOT skip any field
+- DO NOT hallucinate topics not present in input
 
 ----------------------------------------
 
-### 4. Ranking
-Rank ALL videos based on:
-- coverage
-- depth
+TASKS:
+
+1. DOMAIN CHECK
+- Check if all videos belong to same domain
+- If not:
+  return:
+  {{
+    "domain_valid": false,
+    "domain_reason": "..."
+  }}
+- If yes:
+  continue
+
+----------------------------------------
+
+2. TOPIC ANALYSIS
+- Find:
+  - common_topics
+  - unique_topics per video
+  - missing_topics (based only on comparison)
+
+----------------------------------------
+
+3. VIDEO SCORING
+
+For each video compute:
+
+final_score = weighted combination of:
+- clarity_score
+- depth_score
+- structure_score
+- engagement_score
+- information_density_score
+
+IMPORTANT:
+- Be consistent across all videos
+- Use relative comparison, not absolute judgment
+
+----------------------------------------
+
+4. RANKING
+- Rank all videos based on final_score
+
+----------------------------------------
+
+5. RECOMMENDATIONS
+
+Choose:
+- best_overall
+- best_for_beginners (low prerequisites + high clarity)
+- best_for_depth (high depth_score + density)
+- best_for_quick_learning (high clarity + low duration + high density)
+
+----------------------------------------
+
+6. TOPIC-WISE BEST
+- Map key topics → best video
+
+----------------------------------------
+
+7. TIME EFFICIENCY
+- Recommend best video for limited time
+
+----------------------------------------
+ALL score fields MUST be present:
 - clarity
+- depth
 - structure
+- engagement
+- information_density
 
-Be STRICT and consistent.
+RETURN EXACTLY THIS JSON:
 
-----------------------------------------
+{{
+  "domain_valid": true,
+  "domain_reason": "",
 
-### 5. Recommendations
+  "common_topics": [],
 
-Provide:
+  "unique_topics": {{}},
 
-- 🏆 Best Overall Video
-- 📚 Best for Beginners
-- 🧠 Best for Deep Understanding
-- ⚡ Best for Quick Learning (least time, most value)
+  "missing_topics": [],
 
-----------------------------------------
+  "video_evaluations": [
+    {{
+      "video_id": "",
 
-### 6. Topic-wise Guidance (VERY IMPORTANT)
-For key topics:
-- Mention which video explains that topic best
+      "scores": {{
+        "clarity": 0,
+        "depth": 0,
+        "structure": 0,
+        "engagement": 0,
+        "information_density": 0
+      }},
 
-Example:
-- Recursion → Video X
-- OOP → Video Y
+      "final_score": 0,
 
-----------------------------------------
+      "strength_summary": "",
+      "weakness_summary": "",
 
-### 7. Time-Based Decision
-If user has limited time:
-- Recommend the most efficient video
-- Justify based on clarity + density
+      "best_for": []
+    }}
+  ],
 
-----------------------------------------
+  "ranking": [
+    {{
+      "video_id": "",
+      "rank": 1,
+      "final_score": 0
+    }}
+  ],
 
-### OUTPUT FORMAT:
+  "recommendations": {{
+    "best_overall": "",
+    "best_for_beginners": "",
+    "best_for_depth": "",
+    "best_for_quick_learning": ""
+  }},
 
-Domain Check:
-...
+  "topic_wise_best": {{}},
 
-Common Topics:
-...
+  "time_based_recommendation": {{
+    "video_id": "",
+    "reason": ""
+  }},
 
-Unique Topics:
-- Video X:
-- Video Y:
-
-Missing Topics:
-...
-
-Ranking:
-1. Video X (ID: ...)
-2. Video Y (ID: ...)
-
-Recommendations:
-- Best Overall:
-- Best for Beginners:
-- Best for Depth:
-- Best for Quick Learning:
-
-Topic-wise Best:
-- Topic → Video
-
-Reason:
-<clear, strict justification>
+  "overall_reason": ""
+}}
 """,
     input_variables=["all_videos"]
 )
@@ -193,22 +248,54 @@ Reason:
 
 qa_prompt = PromptTemplate(
     template="""
+YOU ARE A JSON GENERATOR.
+
+STRICT RULES:
+- ONLY return JSON
+- NO explanation outside JSON
+- DO NOT use markdown
+- DO NOT skip any field
+
+----------------------------------------
+
 You are an expert programming tutor.
 
 You are given explanations from multiple videos.
 
+Context:
 {context}
 
 Question:
 {question}
 
-Instructions:
-- Answer clearly
-- Compare explanations from different videos
-- Mention which video explains better (if applicable)
-- Keep it simple for learners
+----------------------------------------
 
-Answer:
+TASKS:
+
+1. Answer the question clearly for a learner
+2. Compare explanations across videos
+3. Identify the BEST video
+4. Recommend relevant videos
+5. Explain key concepts (like routing if asked)
+
+----------------------------------------
+- "answer" MUST NOT be empty
+
+RETURN EXACTLY THIS JSON:
+
+{{
+  "answer": "",
+
+  "best_video": "",
+
+  "video_recommendations": [],
+
+  "comparison_summary": "",
+
+  "topic_explanations": {{}},
+
+  "confidence": "high/medium/low"
+}}
 """,
     input_variables=["context", "question"]
 )
