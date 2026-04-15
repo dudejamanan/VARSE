@@ -16,7 +16,15 @@ def analyze_chunks(chunks):
         try:
             parsed = json.loads(response)
             validated = AnalysisResponse(**parsed)
-            return validated.model_dump()
+            analysis_dict = validated.model_dump()
+
+            # normalize text fields
+            analysis_dict["key_strengths"] = [s.lower() for s in analysis_dict["key_strengths"]]
+            analysis_dict["key_weaknesses"] = [s.lower() for s in analysis_dict["key_weaknesses"]]
+            analysis_dict["topics"] = [t.lower() for t in analysis_dict["topics"]]
+            analysis_dict["subtopics"] = [s.lower() for s in analysis_dict["subtopics"]]
+            
+            return analysis_dict
 
         except Exception as e:
             print(f"Attempt {attempt+1} failed:", e)
