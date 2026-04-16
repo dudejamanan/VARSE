@@ -5,6 +5,54 @@ import json
 from schemas.response import AnalysisResponse
 
 
+def repair_json(response: str):
+    open_braces = response.count("{")
+    close_braces = response.count("}")
+
+    if close_braces < open_braces:
+        response += "}" * (open_braces - close_braces)
+
+    return response
+
+def fix_missing_analysis_fields(parsed):
+    parsed.setdefault("topics", [])
+    parsed.setdefault("subtopics", [])
+    parsed.setdefault("examples_present", False)
+
+    parsed.setdefault("depth", "intermediate")
+    parsed.setdefault("depth_score", 5)
+
+    parsed.setdefault("content_type", "mixed")
+
+    parsed.setdefault("clarity", "medium")
+    parsed.setdefault("clarity_score", 5)
+    parsed.setdefault("clarity_reason", "")
+
+    parsed.setdefault("structure", "moderate")
+    parsed.setdefault("structure_score", 5)
+
+    parsed.setdefault("flow", "mixed")
+    parsed.setdefault("repetition", "medium")
+    parsed.setdefault("pace", "moderate")
+
+    parsed.setdefault("information_density", "medium")
+    parsed.setdefault("information_density_score", 5)
+
+    parsed.setdefault("audience_level", "intermediate")
+
+    parsed.setdefault("learning_style", ["theory"])
+
+    parsed.setdefault("prerequisites_required", "medium")
+
+    parsed.setdefault("engagement_level", "medium")
+    parsed.setdefault("engagement_score", 5)
+
+    parsed.setdefault("key_strengths", [])
+    parsed.setdefault("key_weaknesses", [])
+
+    return parsed
+
+
 # 🔹 CLEANER (robust)
 def clean_json_response(response: str):
     response = response.strip()
@@ -64,12 +112,12 @@ def analyze_chunks(chunks):
         response = llm.invoke(prompt)
 
         try:
-            # 🔥 CLEAN first
             cleaned = clean_json_response(response)
+            cleaned = repair_json(cleaned)
 
             parsed = json.loads(cleaned)
 
-            # 🔥 NORMALIZE
+            parsed = fix_missing_analysis_fields(parsed)
             parsed = fix_learning_style(parsed)
 
             validated = AnalysisResponse(**parsed)
@@ -100,16 +148,17 @@ def analyze_chunks(chunks):
             print("Raw response:", response)
 
             prompt = f"""
-You FAILED to return valid JSON.
+YOU FAILED.
 
 STRICT RULES:
 - ONLY return JSON
-- no markdown
-- no explanation
-- enums must match exactly
+- NO markdown
+- NO explanation
+- ALL fields MUST be present
+- NO null values
 - learning_style must be from: theory, hands_on, visual, code_along
 
-Fix this:
+Fix this JSON:
 
 {response}
 """

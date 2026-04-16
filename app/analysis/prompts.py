@@ -2,30 +2,32 @@ from langchain_core.prompts import PromptTemplate
 
 analysis_prompt = PromptTemplate(
     template="""
-You are an expert educator and content analyst.
+YOU ARE A JSON GENERATOR.
 
-Analyze the following transcript and return STRICT JSON.
+ONLY OUTPUT JSON.
+NO TEXT.
+NO MARKDOWN.
+NO EXPLANATION.
 
-IMPORTANT RULES:
-- DO NOT guess anything not present in the transcript
-- DO NOT add external knowledge
-- Follow ENUM values EXACTLY as specified
-- Ensure all numeric scores are between 1 and 10
-- Output ONLY valid JSON
-
-----------------------------------------
 IMPORTANT:
-- You MUST use EXACT enum values
-- DO NOT use hyphens (-), spaces, or slashes (/)
-- ONLY use the following values:
+- If unsure, choose the closest valid option
+- NEVER leave any field empty
+- ALWAYS include all fields
 
+VALID ENUM VALUES:
+
+depth: beginner | intermediate | advanced
 content_type: conceptual | mixed | practical
-
-structure: well_structured | moderate | scattered
-
-learning_style: theory | hands_on | visual | code_along
-
-If you output anything else, the response will FAIL.
+clarity: low | medium | high
+structure: well-structured | moderate | scattered
+flow: sequential | jumping | mixed
+repetition: low | medium | high
+pace: slow | moderate | fast
+information_density: low | medium | high
+audience_level: beginner | intermediate | advanced
+learning_style: theory | hands-on | visual | code-along
+prerequisites_required: low | medium | high
+engagement_level: low | medium | high
 
 Return in this format:
 
@@ -45,7 +47,7 @@ Return in this format:
   "clarity_score": number,
   "clarity_reason": "short explanation",
 
-  "structure": "well_structured/moderate/scattered",
+  "structure": "well-structured/moderate/scattered",
   "structure_score": number,
 
   "flow": "sequential/jumping/mixed",
@@ -59,7 +61,7 @@ Return in this format:
 
   "audience_level": "beginner/intermediate/advanced",
 
-  "learning_style": ["theory/hands_on/visual/code_along"],
+  "learning_style": ["theory/hands-on/visual/code_\-along"],
 
   "prerequisites_required": "low/medium/high",
 
@@ -69,6 +71,8 @@ Return in this format:
   "key_strengths": ["2-4 strengths"],
 
   "key_weaknesses": ["2-4 weaknesses"]
+
+  "analysis_summary": "short summary"
 }}
 
 ----------------------------------------
@@ -111,6 +115,10 @@ STRICT RULES:
 - DO NOT skip any field
 - DO NOT hallucinate topics not present in input
 
+IMPORTANT:
+- Focus on scoring, ranking, and recommendations
+- Topic analysis is NOT your responsibility
+
 ----------------------------------------
 
 TASKS:
@@ -128,24 +136,23 @@ TASKS:
 
 ----------------------------------------
 
-2. TOPIC ANALYSIS
-- Find:
-  - common_topics
-  - unique_topics per video
-  - missing_topics (based only on comparison)
-
+2. NOTE ON TOPICS
+- Topic analysis will be handled by the system
+- DO NOT attempt to compute or infer common/unique/missing topics
+- Focus only on quality evaluation and ranking
 ----------------------------------------
 
 3. VIDEO SCORING
 
 For each video compute:
 
-final_score = weighted combination of:
-- clarity_score
-- depth_score
-- structure_score
-- engagement_score
-- information_density_score
+DO NOT compute final_score.
+Only provide individual scores:
+- clarity
+- depth
+- structure
+- engagement
+- information_density
 
 IMPORTANT:
 - Be consistent across all videos
@@ -183,6 +190,13 @@ ALL score fields MUST be present:
 - structure
 - engagement
 - information_density
+
+IMPORTANT:
+- If any field is missing, fill with default values:
+  - empty list []
+  - empty string ""
+  - score = 5
+- NEVER return null
 
 RETURN EXACTLY THIS JSON:
 
@@ -279,7 +293,14 @@ TASKS:
 5. Explain key concepts (like routing if asked)
 
 ----------------------------------------
+IMPORTANT:
 - "answer" MUST NOT be empty
+- If unsure, generate a simple explanation
+- NEVER return empty strings
+- NEVER return null
+
+video_recommendations MUST be list of video_id strings ONLY
+topic_explanations MUST map topic → string explanation
 
 RETURN EXACTLY THIS JSON:
 

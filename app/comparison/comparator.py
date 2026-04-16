@@ -3,6 +3,7 @@ from analysis.prompts import comparision_prompt
 import json
 from schemas.response import ComparisonResponse
 from rag.qa_chain import clean_json_response
+from comparison.topic_engine import compute_topic_analysis
 
 def fix_topic_wise_best(parsed):
     if "topic_wise_best" in parsed:
@@ -44,6 +45,19 @@ def fix_time_recommendation(parsed):
     # 🔥 FIX NULL video_id
     if parsed["time_based_recommendation"].get("video_id") is None:
         parsed["time_based_recommendation"]["video_id"] = ""
+
+    return parsed
+
+def fix_time_recommendation_with_duration(parsed, videos):
+    if not videos:
+        return parsed
+
+    shortest = min(videos, key=lambda v: v.get("duration_sec", 999999))
+
+    parsed["time_based_recommendation"] = {
+        "video_id": shortest["video_id"],
+        "reason": "shortest duration"
+    }
 
     return parsed
 
@@ -92,6 +106,53 @@ def repair_json(response: str):
 
     return response
 
+def fix_top_level_fields(parsed):
+    
+    parsed.setdefault("domain_valid", True)
+    parsed.setdefault("domain_reason", "")
+
+    parsed.setdefault("common_topics", [])
+    parsed.setdefault("unique_topics", {})
+    parsed.setdefault("missing_topics", [])
+
+    parsed.setdefault("video_evaluations", [])
+    parsed.setdefault("ranking", [])
+
+    parsed.setdefault("recommendations", {
+        "best_overall": "",
+        "best_for_beginners": "",
+        "best_for_depth": "",
+        "best_for_quick_learning": ""
+    })
+
+    parsed.setdefault("topic_wise_best", {})
+
+    parsed.setdefault("time_based_recommendation", {
+        "video_id": "",
+        "reason": ""
+    })
+
+    parsed.setdefault("overall_reason", "")
+
+    return parsed
+
+def fix_ranking(parsed):
+    if not parsed.get("ranking"):
+        rankings = []
+
+        for i, vid in enumerate(parsed.get("video_evaluations", [])):
+            rankings.append({
+                "video_id": vid.get("video_id", ""),
+                "rank": i + 1,
+                "final_score": vid.get("final_score", 0)
+            })
+
+        parsed["ranking"] = rankings
+
+    return parsed
+
+
+
 def fix_comparison_output(parsed):
 
     # 🔹 Fix unique_topics (dict → list)
@@ -127,6 +188,149 @@ def fix_comparison_output(parsed):
 
     return parsed
 
+def fix_recommendations(parsed):
+    ranking = parsed.get("ranking", [])
+    
+    if ranking:
+        top_video = ranking[0]["video_id"]
+
+        # force consistency
+        parsed["recommendations"]["best_overall"] = top_video
+
+    return parsed
+
+def fix_ranking_by_score(parsed):
+    videos = parsed.get("video_evaluations", [])
+
+    # sort by score DESC
+    videos_sorted = sorted(
+        videos,
+        key=lambda x: x.get("final_score", 0),
+        reverse=True
+    )
+
+    ranking = []
+    for i, v in enumerate(videos_sorted):
+        ranking.append({
+            "video_id": v["video_id"],
+            "rank": i + 1,
+            "final_score": v["final_score"]
+        })
+
+    parsed["ranking"] = ranking
+
+    return parsed
+
+def fix_invalid_scores(parsed):
+    for video in parsed.get("video_evaluations", []):
+        val = video.get("final_score")
+
+        # if it's not a number → reset
+        if not isinstance(val, (int, float)):
+            video["final_score"] = 0
+
+    return parsed
+
+
+def compute_final_scores(parsed):
+    for video in parsed.get("video_evaluations", []):
+        scores = video.get("scores", {})
+
+        clarity = scores.get("clarity", 0)
+        depth = scores.get("depth", 0)
+        structure = scores.get("structure", 0)
+        engagement = scores.get("engagement", 0)
+        density = scores.get("information_density", 0)
+
+        final_score = (
+            clarity * 0.25 +
+            depth * 0.25 +
+            structure * 0.2 +
+            engagement * 0.15 +
+            density * 0.15
+        )
+
+        # convert to integer (important for schema)
+        video["final_score"] = int(final_score * 10)
+
+    return parsed
+
+def fix_topic_wise_best_with_scores(parsed, topic_presence):
+    result = {}
+
+    scores_map = {
+        v["video_id"]: v["final_score"]
+        for v in parsed.get("video_evaluations", [])
+    }
+
+    for topic, vids in topic_presence.items():
+        if not vids:
+            continue
+
+        # only compare among videos that HAVE the topic
+        best_vid = max(vids, key=lambda v: scores_map.get(v, 0))
+        result[topic] = best_vid
+
+    parsed["topic_wise_best"] = result
+    return parsed
+
+def fix_quick_learning(parsed):
+    best = max(
+        parsed.get("video_evaluations", []),
+        key=lambda v: (
+            v["scores"].get("clarity", 0) +
+            v["scores"].get("information_density", 0)
+        ),
+        default=None
+    )
+
+    if best:
+        parsed["recommendations"]["best_for_quick_learning"] = best["video_id"]
+
+    return parsed
+
+def fix_recommendation_fields(parsed):
+    videos = parsed.get("video_evaluations", [])
+
+    if not videos:
+        return parsed
+
+    # beginners → clarity
+    beginner = max(videos, key=lambda v: v["scores"].get("clarity", 0))
+    parsed["recommendations"]["best_for_beginners"] = beginner["video_id"]
+
+    # depth → depth + density
+    depth = max(
+        videos,
+        key=lambda v: (
+            v["scores"].get("depth", 0) +
+            v["scores"].get("information_density", 0)
+        )
+    )
+    parsed["recommendations"]["best_for_depth"] = depth["video_id"]
+
+    return parsed
+
+def fix_best_for(parsed):
+    for video in parsed.get("video_evaluations", []):
+
+        scores = video.get("scores", {})
+
+        best_for = []
+
+        if scores.get("clarity", 0) >= 8:
+            best_for.append("beginner")
+
+        if scores.get("depth", 0) >= 7:
+            best_for.append("depth")
+
+        if scores.get("information_density", 0) >= 7:
+            best_for.append("quick_learning")
+
+        video["best_for"] = best_for
+
+    return parsed
+
 def compare_videos(videos):
 
 
@@ -143,14 +347,44 @@ def compare_videos(videos):
 
             parsed = json.loads(cleaned)
 
+# ---------------------------
+# 1. BASIC FIXES (LLM cleanup)
+# ---------------------------
+            parsed = fix_top_level_fields(parsed)
             parsed = fix_missing_fields(parsed)
             parsed = normalize_unique_topics(parsed)
-
             parsed = fix_comparison_output(parsed)
-
             parsed = fix_topic_wise_best(parsed)
             parsed = fix_time_recommendation(parsed)
 
+# ---------------------------
+# 2. SYSTEM LOGIC (override LLM)
+# ---------------------------
+
+            parsed = fix_invalid_scores(parsed)      # 🔥 NEW
+            parsed = compute_final_scores(parsed) 
+            parsed = fix_ranking_by_score(parsed)        # ✅ correct ranking   
+            parsed = fix_recommendations(parsed)         # ✅ best_overall aligned
+            parsed = fix_best_for(parsed)                # ✅ tags per video
+            parsed = fix_quick_learning(parsed)          # ✅ quick learning
+            parsed = fix_recommendation_fields(parsed)
+            parsed = fix_recommendation_fields(parsed)
+            parsed = fix_time_recommendation_with_duration(parsed, videos)
+# ---------------------------
+# 3. TOPIC ENGINE (NEW CORE)
+# ---------------------------
+            common, unique, missing, topic_presence = compute_topic_analysis(videos)
+
+            parsed["common_topics"] = common
+            parsed["unique_topics"] = unique
+            parsed["missing_topics"] = missing
+
+# 🔥 THIS WAS MISSING
+            parsed = fix_topic_wise_best_with_scores(parsed, topic_presence)
+
+# ---------------------------
+# FINAL VALIDATION
+# ---------------------------
             validated = ComparisonResponse(**parsed)
             return validated.model_dump()
 
@@ -159,16 +393,19 @@ def compare_videos(videos):
             print("Raw response:", response)
 
             prompt = f"""
-You FAILED to follow instructions.
+YOU FAILED.
 
 STRICT RULES:
 - ONLY return JSON
 - NO explanation
-- NO code
 - NO markdown
-- MUST match schema EXACTLY
+- NO null values
+- ALL fields must exist
+- scores must be integers (1-10)
 
-Fix this output:
+Return FULL valid JSON.
+
+Fix this:
 
 {response}
 """

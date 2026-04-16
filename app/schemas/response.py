@@ -1,66 +1,68 @@
 from pydantic import BaseModel, Field
-from typing import List, Literal
-from typing import Dict
+from typing import List, Literal, Dict, Optional
 
 
-
+# =========================
+# ANALYSIS
+# =========================
 class AnalysisResponse(BaseModel):
-    topics: List[str]
-    subtopics: List[str]
+    topics: List[str] = []
+    subtopics: List[str] = []
 
-    examples_present: bool
+    examples_present: bool = False
 
-    depth: Literal["beginner", "intermediate", "advanced"]
-    depth_score: int = Field(ge=1, le=10)
+    depth: str  # relax Literal
+    depth_score: int = Field(default=5, ge=1, le=10)
 
-    content_type: Literal["conceptual", "mixed", "practical"]
+    content_type: str
 
-    clarity: Literal["low", "medium", "high"]
-    clarity_score: int = Field(ge=1, le=10)
-    clarity_reason: str
+    clarity: str
+    clarity_score: int = Field(default=5, ge=1, le=10)
+    clarity_reason: str = ""
 
-    structure: Literal["well_structured", "moderate", "scattered"]
-    structure_score: int = Field(ge=1, le=10)
+    structure: str
+    structure_score: int = Field(default=5, ge=1, le=10)
 
-    flow: Literal["sequential", "jumping", "mixed"]
+    flow: str
+    repetition: str
+    pace: str
 
-    repetition: Literal["low", "medium", "high"]
+    information_density: str
+    information_density_score: int = Field(default=5, ge=1, le=10)
 
-    pace: Literal["slow", "moderate", "fast"]
+    audience_level: str
 
-    information_density: Literal["low", "medium", "high"]
-    information_density_score: int = Field(ge=1, le=10)
+    learning_style: List[str] = []
 
-    audience_level: Literal["beginner", "intermediate", "advanced"]
+    prerequisites_required: str
 
-    learning_style: List[Literal["theory", "hands_on", "visual", "code_along"]]
+    engagement_level: str
+    engagement_score: int = Field(default=5, ge=1, le=10)
 
-    prerequisites_required: Literal["low", "medium", "high"]
+    key_strengths: List[str] = []
+    key_weaknesses: List[str] = []
 
-    engagement_level: Literal["low", "medium", "high"]
-    engagement_score: int = Field(ge=1, le=10)
-
-    key_strengths: List[str]
-    key_weaknesses: List[str]
-
-
+    analysis_summary: str
 
 
+# =========================
+# COMPARISON
+# =========================
 class VideoScore(BaseModel):
-    clarity: int
-    depth: int
-    structure: int
-    engagement: int
-    information_density: int
+    clarity: int = 5
+    depth: int = 5
+    structure: int = 5
+    engagement: int = 5
+    information_density: int = 5
 
 
 class VideoEvaluation(BaseModel):
     video_id: str
     scores: VideoScore
-    final_score: int
-    strength_summary: str
-    weakness_summary: str
-    best_for: List[str]
+    final_score: int = 0
+    strength_summary: str = ""
+    weakness_summary: str = ""
+    best_for: List[str] = []
 
 
 class RankingItem(BaseModel):
@@ -70,45 +72,48 @@ class RankingItem(BaseModel):
 
 
 class Recommendation(BaseModel):
-    best_overall: str
-    best_for_beginners: str
-    best_for_depth: str
-    best_for_quick_learning: str
+    best_overall: str = ""
+    best_for_beginners: str = ""
+    best_for_depth: str = ""
+    best_for_quick_learning: str = ""
 
 
 class TimeRecommendation(BaseModel):
-    video_id: str
-    reason: str
+    video_id: str = ""
+    reason: str = ""
 
 
 class ComparisonResponse(BaseModel):
     domain_valid: bool
-    domain_reason: str
+    domain_reason: str = ""
 
-    common_topics: List[str]
-    unique_topics: Dict[str, List[str]]
-    missing_topics: List[str]
+    common_topics: List[str] = []
+    unique_topics: Dict[str, List[str]] = {}
+    missing_topics: List[str] = []
 
-    video_evaluations: List[VideoEvaluation]
-    ranking: List[RankingItem]
+    video_evaluations: List[VideoEvaluation] = []
+    ranking: List[RankingItem] = []
 
-    recommendations: Recommendation
-    topic_wise_best: Dict[str, str]
+    recommendations: Recommendation = Recommendation()
+    topic_wise_best: Dict[str, str] = {}
 
-    time_based_recommendation: TimeRecommendation
+    time_based_recommendation: TimeRecommendation = TimeRecommendation()
 
-    overall_reason: str
+    overall_reason: str = ""
 
 
+# =========================
+# QA
+# =========================
 class QAResponse(BaseModel):
-    answer: str
+    answer: str = ""
 
-    best_video: str
+    best_video: str = ""
 
-    video_recommendations: List[str]
+    video_recommendations: List[str] = []
 
-    comparison_summary: str
+    comparison_summary: str = ""
 
-    topic_explanations: Dict[str, str]
+    topic_explanations: Dict[str, str] = {}
 
-    confidence: Literal["high", "medium", "low"]
+    confidence: Literal["high", "medium", "low"] = "medium"

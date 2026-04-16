@@ -13,37 +13,59 @@ from rag.qa_chain import answer_query
 
 
 def run():
-    urls = ["https://www.youtube.com/watch?v=LDB4uaJ87e0&t=57s","https://www.youtube.com/watch?v=TtPXvEcE11E&pp=ygUUcmVhY3QganMgZnVsbCBjb3Vyc2U%3D","https://www.youtube.com/watch?v=Wt3isV2irrA"]
+    urls = ["https://youtu.be/K5KVEU3aaeQ?si=BHmwae2gqk-21joz","https://youtu.be/_uQrJ0TkZlc?si=WbqQ-_Uux0djqZhr","https://youtu.be/ix9cRaBkVe0?si=DJG209EVoHp133tM"]
     videos = []
     all_chunks = []
     for url in urls:
         video_id = extract_video_id(url)
         print(f"Processing Video:{video_id}")
-        
-        metadata = get_video_metadata(video_id)
 
-        if metadata is None:
-            print(f"Skipping video {video_id} (no metadata)")
+        try:
+            metadata = get_video_metadata(video_id)
+
+            if metadata is None:
+                print(f"Skipping video {video_id} (no metadata)")
+                continue
+
+            views = metadata.get("views", 0)
+            likes = metadata.get("likes", 0)
+            duration_sec = convert_duration(metadata.get("duration", "PT0S"))
+
+            transcript = fetch_transcript(video_id)
+
+            if not transcript:
+                print(f"Skipping video {video_id} (no transcript)")
+                continue
+
+            chunks = split_text(transcript, video_id)
+
+            if not chunks:
+                print(f"Skipping video {video_id} (no chunks)")
+                continue
+
+            all_chunks.extend(chunks)
+
+            try:
+                analysis = analyze_chunks(chunks)
+            except Exception as e:
+                print(f"Analysis failed for {video_id}:", e)
+                continue
+
+            analysis["video_id"] = video_id
+            analysis["duration_sec"] = duration_sec
+            analysis["views"] = views
+            analysis["likes"] = likes
+            analysis["engagement_ratio"] = likes / views if views > 0 else 0
+
+            videos.append(analysis)
+
+        except Exception as e:
+            print(f"Error processing video {video_id}:", e)
             continue
-
-        views = metadata["views"]
-        likes = metadata["likes"]
-        duration_sec = convert_duration(metadata["duration"])
-
-
-        transcript = fetch_transcript(video_id)
-        chunks = split_text(transcript,video_id)
-        all_chunks.extend(chunks)
-        analysis = analyze_chunks(chunks)
-
-        analysis["video_id"] = video_id
-        analysis["duration_sec"] = duration_sec
-        analysis["views"] = views
-        analysis["likes"] = likes
-        analysis["engagement_ratio"] = likes / views if views > 0 else 0
-
-        videos.append(analysis)
     
+    if not all_chunks:
+        raise ValueError("No valid chunks found. Cannot build vectorstore.")
+
     build_vectorstore(all_chunks)
     print("Vectorstore built!")
 
@@ -64,9 +86,12 @@ this is my syllabus, suggest me the video which teaches me all of them clearly a
 '''
     docs = retriever.invoke(query)
 
-    answer = answer_query(docs, query)
+    if docs:
+        answer = answer_query(docs, query)
+    else:
+        answer = {"answer": "No relevant content found.", "confidence": "low"}
     
-
+    
     #Compare all videos
     result = compare_videos(videos)
 

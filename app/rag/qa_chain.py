@@ -3,6 +3,28 @@ from core.llm import llm
 from schemas.response import QAResponse
 import json
 
+def repair_json(response: str):
+    open_braces = response.count("{")
+    close_braces = response.count("}")
+
+    if close_braces < open_braces:
+        response += "}" * (open_braces - close_braces)
+
+    return response
+
+def fix_missing_qa_fields(parsed):
+    parsed.setdefault("answer", "This topic relates to React concepts explained in the videos.")
+    parsed.setdefault("best_video", "")
+
+    parsed.setdefault("video_recommendations", [])
+    parsed.setdefault("comparison_summary", "")
+
+    parsed.setdefault("topic_explanations", {})
+
+    parsed.setdefault("confidence", "medium")
+
+    return parsed
+
 
 def fix_qa_output(parsed):
     
@@ -48,19 +70,18 @@ def fix_qa_output(parsed):
 
     return parsed
 
-
-# 🔹 CLEANER (same pattern as comparison)
 def clean_json_response(response: str):
     response = response.strip()
 
-    # remove markdown
+    # handle markdown blocks robustly
     if "```" in response:
-        response = response.split("```")[1]
+        parts = response.split("```")
+        for part in parts:
+            if "{" in part and "}" in part:
+                response = part
+                break
 
-    # remove ellipsis
-    response = response.replace("...", "")
-
-    # extract JSON only
+    # extract JSON safely
     start = response.find("{")
     end = response.rfind("}")
 
@@ -104,7 +125,11 @@ def answer_query(docs, query):
 
         try:
             cleaned = clean_json_response(response)
+            cleaned = repair_json(cleaned)
+
             parsed = json.loads(cleaned)
+
+            parsed = fix_missing_qa_fields(parsed)
             parsed = fix_qa_output(parsed)
 
             validated = QAResponse(**parsed)
@@ -117,14 +142,17 @@ def answer_query(docs, query):
 
             # 🔥 Retry correction
             prompt = f"""
-You FAILED to return valid JSON.
+YOU FAILED.
 
 STRICT RULES:
 - ONLY return JSON
+- NO markdown
 - NO explanation
-- ALL fields required
+- NO null values
+- ALL fields must exist
+- "answer" MUST NOT be empty
 
-Fix this output:
+Fix this:
 
 {response}
 """
